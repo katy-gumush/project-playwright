@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+*.egg-info/
+
+# Test output
+.pytest_cache/
+allure-results/
+allure-report/
+artifacts/
+report.html
+junit.xml
+
+# Credentials — NEVER commit the real file; commit only credentials.example.json
+data/ebay/credentials.json

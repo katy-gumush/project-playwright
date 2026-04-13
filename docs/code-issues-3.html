@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>3 Issues in the Test Code (and Fixes)</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a2332;
+      --text: #e7ecf3;
+      --muted: #9aa8b8;
+      --accent: #5eb3f6;
+      --border: #2d3a4d;
+      --code: #c9d6e3;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 1rem;
+    }
+    .wrap {
+      max-width: 54rem;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 650;
+      margin: 0 0 0.5rem;
+      letter-spacing: -0.02em;
+    }
+    .lede {
+      color: var(--muted);
+      margin: 0.5rem 0 1.5rem;
+    }
+    h2 {
+      font-size: 1.25rem;
+      margin: 2rem 0 0.75rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--accent);
+    }
+    h3 {
+      margin: 1.25rem 0 0.4rem;
+      font-size: 1rem;
+      color: #b8d4f0;
+    }
+    .issue {
+      background: rgba(26, 35, 50, 0.65);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.1rem;
+      margin: 1rem 0;
+    }
+    .pill {
+      display: inline-block;
+      font-size: 0.85rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--muted);
+      margin-inline-end: 0.4rem;
+    }
+    code, .inline-code {
+      font-family: ui-monospace, "Cascadia Code", monospace;
+      font-size: 0.92em;
+      background: var(--panel);
+      padding: 0.12em 0.35em;
+      border-radius: 4px;
+      color: var(--code);
+    }
+    pre {
+      margin: 0.6rem 0 0;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.9rem 1rem;
+      overflow-x: auto;
+      color: var(--code);
+      line-height: 1.45;
+      font-size: 0.9rem;
+    }
+    ul { margin: 0.4rem 0 0.8rem; padding-left: 1.25rem; }
+    li { margin: 0.3rem 0; color: var(--muted); }
+    .why { color: var(--muted); }
+    .note {
+      margin-top: 1.5rem;
+      padding: 0.85rem 1rem;
+      border-radius: 10px;
+      border: 1px solid rgba(94, 179, 246, 0.25);
+      background: rgba(94, 179, 246, 0.08);
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>3 issues in the test code (and how to fix them)</h1>
+    <p class="lede">
+      Below are three common problems in the code snippet you shared, why they matter, and a clean Playwright + pytest way to fix them.
+      The goal is to make tests <strong>reliable</strong>, <strong>fast</strong>, and <strong>easy to debug</strong>.
+    </p>
+
+    <h2>Issue 1 — Starting Playwright incorrectly + not cleaning up properly</h2>
+    <div class="issue">
+      <span class="pill">Problem</span>
+      <span class="why">
+        The code uses <code class="inline-code">sync_playwright().start()</code> without a context manager and never calls <code class="inline-code">p.stop()</code>.
+        This can leak Playwright driver processes and make later tests flaky.
+      </span>
+
+      <h3>Why it’s a problem</h3>
+      <ul>
+        <li><strong>Resource leak:</strong> leaving Playwright running can keep background processes alive.</li>
+        <li><strong>Flaky suite:</strong> leaks often show up as random failures in CI or after many tests.</li>
+      </ul>
+
+      <h3>Fix (use a context manager)</h3>
+      <pre><code>from playwright.sync_api import sync_playwright
+
+def test_search_functionality():
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.goto("https://example.com")
+        # ... test steps ...
+        browser.close()</code></pre>
+
+      <h3>Even better (pytest fixtures)</h3>
+      <p class="why">
+        Put browser setup/teardown in <code class="inline-code">conftest.py</code> fixtures (like this project already does),
+        so each test only focuses on the scenario.
+      </p>
+    </div>
+
+    <h2>Issue 2 — Using <code class="inline-code">time.sleep</code> instead of waiting for real conditions</h2>
+    <div class="issue">
+      <span class="pill">Problem</span>
+      <span class="why">
+        <code class="inline-code">time.sleep(2)</code> and <code class="inline-code">time.sleep(3)</code> wait a fixed amount of time.
+        Sometimes the page is slower (test fails), sometimes faster (test wastes time).
+      </span>
+
+      <h3>Why it’s a problem</h3>
+      <ul>
+        <li><strong>Flakiness:</strong> sleeps don’t guarantee the element is ready.</li>
+        <li><strong>Slow tests:</strong> even when the UI is ready immediately, you still wait the full sleep time.</li>
+      </ul>
+
+      <h3>Fix (wait for an element / URL / text)</h3>
+      <pre><code>from playwright.sync_api import expect
+
+# Wait for the search box to be visible/enabled
+search_box = page.locator("#search")
+expect(search_box).to_be_visible()
+search_box.fill("playwright testing")
+
+# Wait for results to appear
+results = page.locator(".result-item")
+expect(results.first).to_be_visible()</code></pre>
+    </div>
+
+    <h2>Issue 3 — No assertion (the test doesn’t actually verify anything)</h2>
+    <div class="issue">
+      <span class="pill">Problem</span>
+      <span class="why">
+        The code creates <code class="inline-code">results = page.locator(".result-item")</code> but never checks that results exist or match expectations.
+        Without an assertion, the test can “pass” even when the feature is broken.
+      </span>
+
+      <h3>Why it’s a problem</h3>
+      <ul>
+        <li><strong>False confidence:</strong> the test might always pass and catch nothing.</li>
+        <li><strong>Harder debugging:</strong> you don’t know what “correct” means for the test.</li>
+      </ul>
+
+      <h3>Fix (assert something meaningful)</h3>
+      <pre><code>from playwright.sync_api import expect
+
+results = page.locator(".result-item")
+
+# Example: at least 1 result
+expect(results).to_have_count(1)
+
+# Or: assert that the first result contains expected text
+expect(results.first).to_contain_text("playwright")</code></pre>
+    </div>
+
+    <div class="note">
+      <strong>Extra note:</strong> The snippet also imports Selenium (<code class="inline-code">from selenium import webdriver</code>) but never uses it.
+      Mixing frameworks in one test is usually unnecessary—pick one (here: Playwright) to keep your suite consistent.
+    </div>
+  </div>
+</body>
+</html>

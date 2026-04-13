@@ -1,0 +1,23 @@
+{
+  "base_url": "https://www.ebay.com/",
+  "cases": [
+    // {
+    //   "name": "notebook_bin_under_15",
+    //   "search_text": "spiral notebook",
+    //   "max_price": 100,
+    //   "min_price": null,
+    //   "buy_it_now_only": true,
+    //   "add_limit": 1,
+    //   "cart_total_max": 100
+    // },
+    {
+      "name": "notebook_bin_under_15",
+      "search_text": "spiral notebook",
+      "max_price": 10,
+      "min_price": null,
+      "buy_it_now_only": true,
+      "add_limit": 5,
+      "cart_total_max": 100
+    }
+  ]
+}
