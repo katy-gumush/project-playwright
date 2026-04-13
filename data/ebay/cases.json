@@ -1,7 +1,6 @@
 {
   "base_url": "https://www.ebay.com/",
   "cases": [
-    
     {
       "name": "notebook_bin_under_15",
       "search_text": "spiral notebook",

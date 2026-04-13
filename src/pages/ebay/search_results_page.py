@@ -41,10 +41,10 @@ def _next_page_href(page: Page) -> str | None:
 class EbaySearchResultsPage(BasePage):
     """eBay search results (SERP)."""
 
-    # Same nodes as ``//li[contains(@class,'s-item')]`` inside the results list (not header/promo).
-    _RESULT_ROWS = "ul.srp-results li.s-item"
+    # Legacy ``s-item`` rows; current SERP uses ``s-card`` (same ``ul.srp-results`` list).
+    _RESULT_ROWS = "ul.srp-results li.s-item, ul.srp-results li.s-card"
     _ITEM_LINK = 'a[href*="/itm/"]'
-    _PRICE_CELL = ".s-item__price"
+    _PRICE_CELL = ".s-item__price, .s-card__price"
 
     def goto_filtered_search(
         self,
@@ -103,8 +103,8 @@ class EbaySearchResultsPage(BasePage):
         buy_it_now_only: bool = True,
     ) -> list[str]:
         """
-        Search with URL price cap, walk ``ul.srp-results li.s-item`` cards (task XPath equivalent),
-        keep rows whose ``.s-item__price`` parses to ≤ ``max_price``, follow ``a.pagination__next``.
+        Search with URL price cap, walk ``ul.srp-results`` listing rows (``li.s-item`` or ``li.s-card``),
+        keep rows whose price cell parses to ≤ ``max_price``, follow ``a.pagination__next``.
         """
         self.goto_filtered_search(
             query,

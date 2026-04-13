@@ -34,21 +34,31 @@ class EbayCartPage(BasePage):
 
     def clear_cart(self) -> int:
         """
-        Remove every item from the cart before the test run.
-        Returns the number of items removed.
+        Remove every line item from the cart (multiple removes in a loop).
+
+        Keeps trying after a failed click (transient overlay / slow DOM) and only
+        stops when there are no Remove buttons left or after several consecutive failures.
         """
         self.open()
         removed = 0
         # Real eBay DOM: role=button, accessible name starts with "Remove - <item title>"
         remove_btn = self.page.get_by_role("button", name=re.compile(r"^Remove", re.I))
+        consecutive_failures = 0
+        max_consecutive_failures = 6
         while remove_btn.count() > 0:
             try:
                 remove_btn.first.click(timeout=5_000)
-                # Wait for the row to be removed from the DOM, not for full network idle.
-                self.page.wait_for_load_state("domcontentloaded", timeout=5_000)
+                try:
+                    self.page.wait_for_load_state("domcontentloaded", timeout=5_000)
+                except Exception:
+                    pass
                 removed += 1
+                consecutive_failures = 0
             except Exception:
-                break
+                consecutive_failures += 1
+                if consecutive_failures >= max_consecutive_failures:
+                    break
+                self.page.wait_for_timeout(600)
         return removed
 
     def _save_cart_screenshot(self) -> None:
