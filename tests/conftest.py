@@ -2,13 +2,14 @@ import os
 import sys
 from pathlib import Path
 
-import pytest
-from playwright.sync_api import Browser, BrowserContext, Page, Playwright, sync_playwright
-
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+
+import pytest
+from playwright.sync_api import Browser, BrowserContext, Page, Playwright, sync_playwright
+
+from src.utils.artifact_stem import artifact_path, artifact_stem_from_pytest_node
 
 
 @pytest.fixture(scope="session")
@@ -92,6 +93,9 @@ def screenshot_on_failure(request, page: Page):
     rep = getattr(request.node, "rep_call", None)
     if rep and rep.failed:
         try:
-            page.screenshot(path="artifacts/failure.png", full_page=True)
+            stem = artifact_stem_from_pytest_node(request.node.name)
+            out = artifact_path(stem, "failure.png")
+            out.parent.mkdir(parents=True, exist_ok=True)
+            page.screenshot(path=str(out), full_page=True)
         except Exception:
             pass

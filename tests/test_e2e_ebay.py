@@ -32,9 +32,9 @@ from src.pages.ebay import (
     optional_first_checkpoint_pause,
     pause_if_challenge_visible,
 )
+from src.utils.artifact_stem import artifact_path, artifact_stem_from_pytest_node
 from src.utils.data_loader import load_credentials, load_test_data
 
-_TRACE_PATH = str(Path("artifacts") / "cart_trace.zip")
 _CREDENTIALS_PATH = "data/ebay/credentials.json"
 
 DEFAULT_ADD_LIMIT = 5
@@ -61,12 +61,19 @@ _EBAY_PARAMS = list(_cases())
     ids=[c["name"] for _, c in _EBAY_PARAMS],
 )
 def test_ebay_search_filter_cart_assert_total(
-    page: Page, context: BrowserContext, base_url: str, case: dict
+    page: Page,
+    context: BrowserContext,
+    request: pytest.FixtureRequest,
+    base_url: str,
+    case: dict,
 ) -> None:
+    stem = artifact_stem_from_pytest_node(request.node.name)
+    trace_path = str(artifact_path(stem, "cart_trace.zip"))
+
     auth = EbayAuthPage(page)
     search = EbaySearchResultsPage(page)
-    item = EbayItemPage(page)
-    cart = EbayCartPage(page)
+    item = EbayItemPage(page, artifact_stem=stem)
+    cart = EbayCartPage(page, artifact_stem=stem)
 
     add_limit: int = int(case.get("add_limit", DEFAULT_ADD_LIMIT))
     max_price: float = float(case["max_price"])
@@ -151,7 +158,7 @@ def test_ebay_search_filter_cart_assert_total(
                 items_count=len(added_urls),
                 cart_total_max=cart_total_max,
                 context=context if tracing_enabled else None,
-                trace_path=_TRACE_PATH if tracing_enabled else None,
+                trace_path=trace_path if tracing_enabled else None,
             )
             allure.attach(
                 str(sub),

@@ -5,10 +5,11 @@ import re
 from pathlib import Path
 
 import allure
-from playwright.sync_api import expect
+from playwright.sync_api import Page, expect
 
 from src.pages.base_page import BasePage
 from src.pages.ebay.challenge import pause_if_challenge_visible
+from src.utils.artifact_stem import artifact_path
 
 _ARTIFACTS_DIR = Path("artifacts")
 
@@ -25,6 +26,10 @@ class ItemUnavailableError(Exception):
 
 
 class EbayItemPage(BasePage):
+    def __init__(self, page: Page, *, artifact_stem: str = "") -> None:
+        super().__init__(page)
+        self._artifact_stem = artifact_stem
+
     def assert_loaded(self) -> None:
         expect(self.page).to_have_url(re.compile(r"/itm/"), timeout=30_000)
 
@@ -151,7 +156,7 @@ class EbayItemPage(BasePage):
                     )
                     continue
 
-                screenshot_path = _ARTIFACTS_DIR / f"item_{idx:02d}_added.png"
+                screenshot_path = artifact_path(self._artifact_stem, f"item_{idx:02d}_added.png")
                 try:
                     self.page.screenshot(path=str(screenshot_path), full_page=True)
                     with open(screenshot_path, "rb") as f:
