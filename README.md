@@ -4,19 +4,6 @@ End-to-end automation for an e-commerce flow on **[eBay.com](https://www.ebay.co
 
 ---
 
-## What this project does
-
-The test covers four core functions that mirror the assignment spec:
-
-| # | Function | Implementation |
-|---|----------|----------------|
-| 1 | **Authentication** | `EbayAuthPage.login(user, password, home_url=…)` — real sign-in; pauses on CAPTCHA / interstitial |
-| 2 | **searchItemsByNameUnderPrice** | `EbaySearchResultsPage.search_items_by_name_under_price(query, max_price, limit)` — URL `_udhi` / `_udlo`, XPath `li[contains(@class,'s-item')]`, `.s-item__price` ≤ `max_price`, `a.pagination__next` paging |
-| 3 | **addItemsToCart** | `EbayItemPage.add_items_to_cart(urls)` — loops URLs, picks random variants, saves screenshot per item |
-| 4 | **assertCartTotalNotExceeds** | `EbayCartPage.assert_cart_total_not_exceeds(budget_per_item, items_count)` — asserts subtotal ≤ budget × count, saves cart screenshot + trace |
-
----
-
 ## Prerequisites
 
 | Requirement | Notes |
@@ -55,7 +42,7 @@ cp data/ebay/credentials.example.json data/ebay/credentials.json
 }
 ```
 
-If the file is missing or either field is empty, the test fails immediately with a clear error message before opening the browser.
+If the file is missing or either field is empty, sign-in cases fail immediately with a clear error message before opening the browser. Cases with `login_as_guest: true` in `cases.json` do not read this file.
 
 ---
 
@@ -63,30 +50,22 @@ If the file is missing or either field is empty, the test fails immediately with
 
 The browser is **headless by default**. eBay aggressively blocks headless browsers — run headed and use `PWDEBUG=1` so Playwright Inspector opens when the test pauses for a manual CAPTCHA step.
 
-The test is **skipped by default** unless `EBAY_MANUAL=1` is set.
-
 ### macOS / Linux
 
 ```bash
-HEADLESS=0 EBAY_MANUAL=1 pytest tests/test_e2e_ebay.py -v
-```
-
-Pause once after the homepage loads (useful for accepting cookie banners or handling a late challenge):
-
-```bash
-HEADLESS=0 EBAY_MANUAL=1 EBAY_ALWAYS_PAUSE=1 pytest tests/test_e2e_ebay.py -v
+HEADLESS=0 pytest tests/test_e2e_ebay.py -v
 ```
 
 Enable Playwright tracing (saved to `artifacts/cart_trace.zip`):
 
 ```bash
-HEADLESS=0 EBAY_MANUAL=1 EBAY_TRACE=1 pytest tests/test_e2e_ebay.py -v
+HEADLESS=0 EBAY_TRACE=1 pytest tests/test_e2e_ebay.py -v
 ```
 
 Step through the test in the Playwright Inspector:
 
 ```bash
-HEADLESS=0 PWDEBUG=1 EBAY_MANUAL=1 pytest tests/test_e2e_ebay.py -v -k mug_bin_under_25
+HEADLESS=0 PWDEBUG=1 pytest tests/test_e2e_ebay.py -v -k mug_bin_under_25
 ```
 
 > **`PWDEBUG=1` note**: the Inspector pauses at the very first Playwright call. Click **Resume** (▶) to continue. If you close the Inspector window the browser connection drops and the test fails with `TargetClosedError`. Only use `PWDEBUG=1` when you intend to step through the test manually.
@@ -95,28 +74,10 @@ HEADLESS=0 PWDEBUG=1 EBAY_MANUAL=1 pytest tests/test_e2e_ebay.py -v -k mug_bin_u
 
 ```powershell
 $env:HEADLESS = "0"
-$env:EBAY_MANUAL = "1"
 pytest tests/test_e2e_ebay.py -v
 ```
 
 > Use eBay only in line with their [User Agreement](https://www.ebay.com/help/policies/member-behaviour-policies/user-agreement?id=4259). This project is for learning purposes.
-
-### Environment variables
-
-| Variable | Default | Effect |
-|----------|---------|--------|
-| `EBAY_MANUAL` | unset | Must be `1` to run the test (safety gate) |
-| `HEADLESS` | `1` | Set to `0` to show the browser window |
-| `SLOWMO_MS` | `0` | Milliseconds between actions — useful for visual debugging |
-| `BROWSER` | `chromium` | Also accepts `firefox` or `webkit` |
-| `LOCALE` | `en-US` | Browser locale |
-| `USER_AGENT` | Chrome/124 | Custom user-agent string |
-| `EBAY_ALWAYS_PAUSE` | unset | Set to `1` to pause once after the first page load |
-| `EBAY_TRACE` | unset | Set to `1` to save a Playwright trace to `artifacts/cart_trace.zip` |
-| `NAVIGATION_TIMEOUT_MS` | `90000` | Default timeout for `page.goto` (eBay can be slow) |
-| `PLAYWRIGHT_CHANNEL` | unset | Set to `chrome` to use installed Google Chrome instead of bundled Chromium |
-
-If the headed window stays **blank or white**: try `PLAYWRIGHT_CHANNEL=chrome` or `BROWSER=firefox`; check network/VPN/ad-blockers for `ebay.com`.
 
 ### Test data
 
@@ -126,11 +87,11 @@ Cases are in `data/ebay/cases.json`. Add or edit cases without touching any Pyth
 |-------|----------|-------------|
 | `name` | yes | Test ID shown in pytest output |
 | `search_text` | yes | Keyword used for the eBay search |
-| `max_price` | yes | Per-item ceiling for search (URL + row filter) and base for cart: allowed total ≤ `max_price × items_added` |
-| `cart_total_max` | no | When set, cart subtotal must also be ≤ this number; effective cap is `min(max_price × items_added, cart_total_max)` |
+| `max_price` | yes | Per-item ceiling for search (URL + row filter) and cart assertion: allowed total ≤ `max_price × items_added` |
 | `add_limit` | no | How many items to collect from search results (default 5) |
 | `min_price` | no | Lower price bound for the search URL |
 | `buy_it_now_only` | no | `true` (default) — restricts search to Buy It Now listings |
+| `login_as_guest` | no | `false` (default) — full sign-in via `credentials.json`; set `true` to open `base_url` only (guest cart; no credentials file read for that case) |
 
 Search collects listing URLs whose **`.s-item__price` (or row) price** is ≤ `max_price` (rows without a parseable price are skipped). The test requires **`len(urls) >= add_limit`** and that **every collected URL is added** to the cart, so a partial add fails loudly.
 
@@ -139,7 +100,6 @@ Search collects listing URLs whose **`.s-item__price` (or row) price** is ≤ `m
   "name": "mug_bin_under_25",
   "search_text": "ceramic coffee mug",
   "max_price": 100,
-  "cart_total_max": 100,
   "add_limit": 1,
   "buy_it_now_only": true
 }
@@ -208,26 +168,26 @@ test_e2e_ebay.py  (one run per case)
 ### Allure (recommended)
 
 ```bash
-HEADLESS=0 EBAY_MANUAL=1 pytest tests/test_e2e_ebay.py -v --alluredir=allure-results
+HEADLESS=0 pytest tests/test_e2e_ebay.py -v --alluredir=allure-results
 allure serve allure-results
 ```
 
 ### HTML
 
 ```bash
-HEADLESS=0 EBAY_MANUAL=1 pytest tests/test_e2e_ebay.py -v --html=report.html --self-contained-html
+HEADLESS=0 pytest tests/test_e2e_ebay.py -v --html=report.html --self-contained-html
 ```
 
 ### JUnit XML (CI)
 
 ```bash
-HEADLESS=0 EBAY_MANUAL=1 pytest tests/test_e2e_ebay.py -v --junitxml=junit.xml
+HEADLESS=0 pytest tests/test_e2e_ebay.py -v --junitxml=junit.xml
 ```
 
 ### All at once
 
 ```bash
-HEADLESS=0 PWDEBUG=1 EBAY_MANUAL=1 pytest tests/test_e2e_ebay.py -v \
+HEADLESS=0 PWDEBUG=1 pytest tests/test_e2e_ebay.py -v \
   --alluredir=allure-results \
   --html=report.html --self-contained-html \
   --junitxml=junit.xml
@@ -235,20 +195,15 @@ HEADLESS=0 PWDEBUG=1 EBAY_MANUAL=1 pytest tests/test_e2e_ebay.py -v \
 
 ---
 
-## Limitations and assumptions
+## Implementation summary
 
-**Authentication** — The test performs a real eBay sign-in (`EbayAuthPage.login()`). eBay's sign-in is a two-step form (username → Continue → password → Sign in). If a CAPTCHA, SMS code, or 2FA screen appears at any point, execution pauses via `page.pause()` — solve it manually in the headed browser, then click **Resume** in the Playwright Inspector. `login_as_guest()` is kept as a fallback if sign-in is not needed.
+All four functions required by the assignment are implemented and wired into a single parametrised pytest test (`test_ebay_search_filter_cart_assert_total`).
 
-**Price filtering** — URL parameters (`_udhi` / `_udlo`) match eBay’s facet (e.g. “Under ILS 10.00” when `max_price` is 10). Each result row’s **`.s-item__price`** text is parsed (`$`, `US $`, `ILS`, `GBP`, …); the lowest amount in that cell must be ≤ `max_price`.
+| # | Assignment function | Implementation | File |
+|---|---------------------|----------------|------|
+| 1 | **Authentication** | `EbayAuthPage.login(username, password)` — two-step eBay sign-in with CAPTCHA/2FA `page.pause()` support; `login_as_guest()` for guest sessions; driven by `login_as_guest` flag in `cases.json` | `src/pages/ebay/auth_page.py` |
+| 2 | **searchItemsByNameUnderPrice** | `EbaySearchResultsPage.search_items_by_name_under_price(query, max_price, limit=5)` — navigates to eBay with `_udhi`/`_udlo` URL price params, walks `ul.srp-results li.s-item, li.s-card` rows and parses `.s-item__price` via `lowest_price_in_listing_text()`, follows `a.pagination__next` across pages until `limit` qualifying URLs are collected, returns fewer items (even 0) if pagination runs out | `src/pages/ebay/search_results_page.py` |
+| 3 | **addItemsToCart** | `EbayItemPage.add_items_to_cart(urls)` — loops through each URL, `select_variants_if_present()` picks random `<select>` options and swatch buttons, clicks "Add to cart" and waits for the confirmation modal, saves a screenshot to `artifacts/` and attaches it to Allure per item | `src/pages/ebay/item_page.py` |
+| 4 | **assertCartTotalNotExceeds** | `EbayCartPage.assert_cart_total_not_exceeds(budget_per_item, items_count)` — opens `cart.ebay.com`, parses subtotal via a priority-ranked regex chain (USD, then local currency), asserts `subtotal ≤ budget_per_item × items_count`, saves a full-page cart screenshot and optional Playwright trace | `src/pages/ebay/cart_page.py` |
 
-**Paging** — `a.pagination__next` until `limit` URLs or no further page.
-
-**Variant selection** — `select_variants_if_present` tries `<select>` dropdowns and swatch button groups, choosing at random. Not all listings expose selectable variants, which is fine — the function is a no-op when nothing is found.
-
-**Currency** — Search row parsing and cart subtotal logic accept multiple currency prefixes; `max_price` in `cases.json` should match the currency eBay applies to the price facet for your account (often local currency on ebay.com).
-
-**Cart subtotal** — `assert_cart_total_not_exceeds` checks the merchandise subtotal, not the final order total. Tax, shipping, and fees are not included.
-
-**CAPTCHA / bot checks** — Headless runs frequently hit "Please verify yourself". Always run with `HEADLESS=0 PWDEBUG=1`. When the test pauses at `page.pause()`, solve the challenge manually in the browser, then click **Resume** in the Playwright Inspector. Never automate CAPTCHA solving.
-
-**Artifacts directory** — Screenshots and the trace zip land in `artifacts/`. Create it before the first run: `mkdir -p artifacts`.
+**Architecture:** Page Object Model with `BasePage` → `EbayAuthPage` / `EbaySearchResultsPage` / `EbayItemPage` / `EbayCartPage`, fully OOP, data-driven from `data/ebay/cases.json`, with Allure steps and attachments throughout.

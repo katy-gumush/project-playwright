@@ -1,0 +1,56 @@
+מטרת התרגיל 
+לממש תרחיש e2e על אתר מסחר דוגמה eBay :הכולל חיפוש מוצרים, סינון לפי מחיר, הוספה לסל, ואימות סכום.
+להציג ארכיטקטורה נקייה .Page Object Model, OOP, Data-Driven 
+מסגרת זמן
+ 3–4שעות נטו ליישום + 20–30 דק' לקריאה/הדגמה.
+דרישות כלליות
+פתרון אוטומציה אפשריים:  Playwright
+שפות תוכנה אפשריות: Python
+דוחות אפשריים: Extent Reports, Allure Reports, Report Portal
+יש לפתח  בפיתוח מונחה עצמים
+יש לממש את הפיתוח במודל POM
+Data-Driven קלטי בדיקה מקובץ חיצוני (JSON/CSV/YAML) 
+תיאור הפרויקט
+יש לפתח 4 פונקציות מרכזיות:
+הזדהות
+פונקצית חיפוש עם תנאי מחיר
+addItemsToCart
+assertCartTotalNotExceeds
+פונקציית חיפוש עם תנאי מחיר
+חתימה דוגמה TypeScript, Playwright :
+// מחזירה עד N קישורים לפריטים שלחלקם מחיר <= maxPrice
+async function searchItemsByNameUnderPrice(query: string, maxPrice: number, limit = 5): Promise<string[]>
+התנהגות:
+מבצעת חיפוש לפי query
+אם יש פילטר מחיר בעמוד השתמש בו (min/max) כדי לצמצם תוצאות.
+שלוף בעזרת xpath את ה- limit (בדוגמא חמישה) פריטים ראשונים אשר מחירם שווה או נמוך ל maxPrice.
+מקרה מיוחד – פחות מ־5 פריטים בדף הנוכחי:
+אם קיימת אפשרות Paging כפתור "Next" או מעבר עמוד, יש לעבור לעמוד הבא, להמשיך לאסוף פריטים עד שמגיעים ל־5 או עד שנגמרים העמודים.
+אם אין אפשרות  Pagingהחזר את מספר הפריטים שכן נמצאו (גם אם זה פחות מ־5.(
+החזרה: מערך קישורים (URLs) של עד 5 תוצאות שעומדות בתנאי מחיר.
+אם נמצאו פחות החזר את מה שיש (גם 0 זה תקין(.
+דוגמה שימוש:
+const urls = await searchItemsByNameUnderPrice("shoes", 220, 5);
+פונקציה שמוסיפה פריטים לסל
+חתימה:
+async function addItemsToCart(urls: string[]): Promise<void>
+התנהגות:
+עבור בלולאה על כל URL פתח את דף הפריט.
+אם צריך לבחור וריאנטים (מידה/צבע/כמות) בחר ערכים באקראי מבין הזמינים.
+לחץ “Add to cart” 
+חזור למסך/ללשונית החיפוש 
+שמור צילום מסך Log לכל פריט שנוסף.
+
+פונקציה שמוודאת את סכום סל הקניות
+חתימה:
+async function assertCartTotalNotExceeds(budgetPerItem: number, itemsCount: number): Promise<void>
+התנהגות:
+פתח את סל הקניות.
+קרא את סכום הביניים/סכום כולל (כפי שמופיע באתר).
+חשב סף: budgetPerItem * itemsCount.
+אמת שהסכום הכולל אינו עולה על הסף.
+שמור Screenshot/Trace של עמוד הסל.
+דוגמת תרחיש מלא:
+קריאה searchItemsByNameUnderPrice("shoes", 220, 5) קיבלנו עד 5 קישורים.
+ addItemsToCart(urls)מוסיף את כולם לסל הקניות.
+ assertCartTotalNotExceeds(220, urls.length) מאמת שסכום הסל ≤ 220*מספר הפריטים.

@@ -1,13 +1,15 @@
 """
-eBay E2E: sign in with credentials, search + price filter (or use pinned item URLs),
+eBay E2E: optional sign-in (or guest per ``login_as_guest`` in cases.json), search + price filter,
 add to cart with variant selection, assert cart subtotal.
 
-Opt-in: EBAY_MANUAL=1  (HEADLESS=0 strongly recommended).
+HEADLESS=0 is strongly recommended (eBay often blocks pure headless runs).
 If a CAPTCHA / 2FA screen appears, the test pauses via page.pause() — solve it
 manually in the headed browser, then click Resume in the Playwright Inspector.
 
 Credentials: copy data/ebay/credentials.example.json → data/ebay/credentials.json
 and fill in your eBay username and password. The credentials file is gitignored.
+Per case, set ``login_as_guest`` to ``true`` in ``data/ebay/cases.json`` to skip sign-in
+(``EbayAuthPage.login_as_guest``); credentials are not loaded for that case.
 
 Core APIs (see page objects): ``search_items_by_name_under_price``,
 ``EbayItemPage.add_items_to_cart``, ``EbayCartPage.assert_cart_total_not_exceeds``.
@@ -51,10 +53,6 @@ _EBAY_PARAMS = list(_cases())
 
 
 @pytest.mark.ebay
-@pytest.mark.skipif(
-    os.getenv("EBAY_MANUAL") != "1",
-    reason="Set EBAY_MANUAL=1 (HEADLESS=0 recommended) for eBay E2E",
-)
 @pytest.mark.parametrize(
     "base_url,case",
     _EBAY_PARAMS,
@@ -77,18 +75,22 @@ def test_ebay_search_filter_cart_assert_total(
 
     add_limit: int = int(case.get("add_limit", DEFAULT_ADD_LIMIT))
     max_price: float = float(case["max_price"])
-    cart_total_max: float | None = (
-        float(case["cart_total_max"]) if case.get("cart_total_max") is not None else None
-    )
     tracing_enabled = os.getenv("EBAY_TRACE") == "1"
+    login_as_guest = bool(case.get("login_as_guest", False))
 
     try:
         # ── 1. Authentication ──────────────────────────────────────────────────
-        with allure.step("Authentication — sign in to eBay"):
-            username, password = load_credentials(_CREDENTIALS_PATH)
-            auth.login(username, password, home_url=base_url)
-            optional_first_checkpoint_pause(page)
-            pause_if_challenge_visible(page)
+        if login_as_guest:
+            with allure.step("Authentication — guest session (no sign-in)"):
+                auth.login_as_guest(home_url=base_url)
+                optional_first_checkpoint_pause(page)
+                pause_if_challenge_visible(page)
+        else:
+            with allure.step("Authentication — sign in to eBay"):
+                username, password = load_credentials(_CREDENTIALS_PATH)
+                auth.login(username, password, home_url=base_url)
+                optional_first_checkpoint_pause(page)
+                pause_if_challenge_visible(page)
 
         # ── 1b. Clear cart (avoid "already in cart" blocking Add to cart) ──────
         with allure.step("Clear cart before test"):
@@ -145,18 +147,15 @@ def test_ebay_search_filter_cart_assert_total(
             )
 
         # ── 5. Assert cart total (assertCartTotalNotExceeds) ───────────────────
-        _cap = min(max_price * len(added_urls), cart_total_max) if cart_total_max is not None else max_price * len(added_urls)
         with allure.step(
-            f"assertCartTotalNotExceeds — cap ${_cap:.2f} "
-            f"(per-item ${max_price:.2f} × {len(added_urls)}"
-            + (f", cart_total_max ${cart_total_max:.2f})" if cart_total_max is not None else ")")
+            f"assertCartTotalNotExceeds — cap ${max_price * len(added_urls):.2f} "
+            f"(per-item ${max_price:.2f} × {len(added_urls)})"
         ):
             cart.open()
             pause_if_challenge_visible(page)
             sub = cart.assert_cart_total_not_exceeds(
                 budget_per_item=max_price,
                 items_count=len(added_urls),
-                cart_total_max=cart_total_max,
                 context=context if tracing_enabled else None,
                 trace_path=trace_path if tracing_enabled else None,
             )

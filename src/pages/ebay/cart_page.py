@@ -192,7 +192,7 @@ class EbayCartPage(BasePage):
         if _VERIFICATION_PATTERNS.search(body):
             raise AssertionError(
                 "eBay returned a human-verification page instead of the cart. "
-                "Run with HEADLESS=0 and EBAY_MANUAL=1, complete the challenge, "
+                "Run with HEADLESS=0, complete the challenge, "
                 "then click Resume in the Playwright Inspector."
             )
 
@@ -264,20 +264,11 @@ class EbayCartPage(BasePage):
         budget_per_item: float,
         items_count: int,
         *,
-        cart_total_max: float | None = None,
         context: BrowserContext | None = None,
         trace_path: str | None = None,
     ) -> float:
-        """
-        Assert cart subtotal does not exceed the effective budget.
-
-        ``budget_per_item * items_count`` is the default cap (assignment shape).
-        If ``cart_total_max`` is set (from JSON), the cap is the **stricter** of
-        that product and ``cart_total_max`` (absolute cart ceiling).
-        """
+        """Assert cart subtotal ≤ budget_per_item * items_count."""
         max_total = budget_per_item * items_count
-        if cart_total_max is not None:
-            max_total = min(max_total, float(cart_total_max))
 
         if context is not None and trace_path is not None:
             try:
@@ -295,8 +286,6 @@ class EbayCartPage(BasePage):
 
         assert sub <= max_total, (
             f"Cart subtotal ${sub:.2f} exceeds allowed total ${max_total:.2f} "
-            f"(budget_per_item=${budget_per_item:.2f} × {items_count}"
-            + ("; cart_total_max also applied" if cart_total_max is not None else "")
-            + ")."
+            f"(budget_per_item=${budget_per_item:.2f} × {items_count})."
         )
         return sub

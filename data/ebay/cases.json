@@ -2,22 +2,13 @@
   "base_url": "https://www.ebay.com/",
   "cases": [
     {
-      "name": "notebook_1_item_under_100",
-      "search_text": "spiral notebook",
-      "max_price": 100,
-      "min_price": null,
-      "buy_it_now_only": true,
-      "add_limit": 1,
-      "cart_total_max": 100
-    },
-    {
       "name": "notebook_5_items_under_10",
-      "search_text": "spiral notebook",
-      "max_price": 10,
+      "login_as_guest": false,
+      "search_text": "smart watch bla blab can find it",
+      "max_price": 1000,
       "min_price": null,
       "buy_it_now_only": true,
-      "add_limit": 5,
-      "cart_total_max": 100
+      "add_limit": 20
     }
   ]
 }

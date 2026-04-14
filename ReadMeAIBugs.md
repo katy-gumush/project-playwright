@@ -104,16 +104,6 @@ expect(results.first).to_contain_text("playwright")
 
 **Suggested fix:** Remove the line `from selenium import webdriver`.
 
----
-
-## Additional issue (5) — URL does not match the selectors
-
-**What is wrong:**  
-`https://example.com` typically has **no** `#search`, `.button`, or `.result-item` as assumed. The test is likely to fail for **environment/DOM** reasons even if the control flow were perfect.
-
-**Suggested fix:** Point to a **URL** (or local HTML) where those elements actually exist, and align selectors with the real DOM.
-
----
 
 ## Summary
 
@@ -123,7 +113,7 @@ expect(results.first).to_contain_text("playwright")
 | 2 | `time.sleep` | Slow / timing-sensitive |
 | 3 | Missing `assert` / `expect` on results | Meaningless test |
 | 4 | Unused Selenium import | Noise / confusion |
-| 5 | `example.com` vs. selectors | Environment mismatch |
+
 
 ---
 

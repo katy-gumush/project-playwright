@@ -32,7 +32,7 @@
 ## הרצה
 
 ```bash
-HEADLESS=0 PWDEBUG=1 EBAY_MANUAL=1 pytest tests/test_e2e_ebay.py -v
+HEADLESS=0 PWDEBUG=1 pytest tests/test_e2e_ebay.py -v
 ```
 
 **הערת ציות:** השתמשו ב־eBay בהתאם לתנאי השימוש והמדיניות שלהם. המטלה מיועדת ללמידה; האחריות על שימוש מותר היא עליכם.
