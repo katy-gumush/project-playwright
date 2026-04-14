@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # eBay E2E — Playwright / Python
 
 End-to-end automation for an e-commerce flow on **[eBay.com](https://www.ebay.com/)** using **Playwright**, **pytest**, **Page Object Model**, and **data-driven** test cases from JSON.
@@ -209,5 +208,3 @@ All four functions required by the assignment are implemented and wired into a s
 
 **Architecture:** Page Object Model with `BasePage` → `EbayAuthPage` / `EbaySearchResultsPage` / `EbayItemPage` / `EbayCartPage`, fully OOP, data-driven from `data/ebay/cases.json`, with Allure steps and attachments throughout.
 =======
-# project-playwright
->>>>>>> 11b9ff13e5e1b45c549862624bd668b12dab371b
