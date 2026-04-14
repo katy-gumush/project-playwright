@@ -206,5 +206,3 @@ All four functions required by the assignment are implemented and wired into a s
 | 3 | **addItemsToCart** | `EbayItemPage.add_items_to_cart(urls)` — loops through each URL, `select_variants_if_present()` picks random `<select>` options and swatch buttons, clicks "Add to cart" and waits for the confirmation modal, saves a screenshot to `artifacts/` and attaches it to Allure per item | `src/pages/ebay/item_page.py` |
 | 4 | **assertCartTotalNotExceeds** | `EbayCartPage.assert_cart_total_not_exceeds(budget_per_item, items_count)` — opens `cart.ebay.com`, parses subtotal via a priority-ranked regex chain (USD, then local currency), asserts `subtotal ≤ budget_per_item × items_count`, saves a full-page cart screenshot and optional Playwright trace | `src/pages/ebay/cart_page.py` |
 
-**Architecture:** Page Object Model with `BasePage` → `EbayAuthPage` / `EbaySearchResultsPage` / `EbayItemPage` / `EbayCartPage`, fully OOP, data-driven from `data/ebay/cases.json`, with Allure steps and attachments throughout.
-=======

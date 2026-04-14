@@ -13,9 +13,8 @@ allure-report/
 artifacts/
 report.html
 junit.xml
-
+docs/
 # Credentials — NEVER commit the real file; commit only credentials.example.json
-data/ebay/credentials.json
 =======
 ### AL ###
 #Template for AL projects for Dynamics 365 Business Central
